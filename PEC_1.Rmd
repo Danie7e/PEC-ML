@@ -1,0 +1,399 @@
+---
+title: "Machine Learning PEC1"
+author: "Daniele Sebastiani"
+date: "2024-10-30"
+output: 
+  pdf_document:
+    toc: true
+    toc_depth: 3
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+El informe tiene que ser DINAMICOoooooooooooooooooooooOOOOOooOOOooOOOO
+
+# 1. Algoritmo k-NN
+
+Escribir en el informe una sección con el título “Algoritmo k-NN” en el que se haga una
+breve explicación de su funcionamiento y sus características. Además, se presente una tabla
+de sus fortaleza y debilidades.
+
+# 2. Codificación one-hot
+
+Con esta función se pretende la conversión de las letras que representa cada
+nucleotido e un códico binario 0,1.
+En particular quiero la conversión siguiente:
+
+|Letra-Nucleotido|valor binario|
+|----------------|-------------|
+|A               |1,0,0,0      |
+|C               |0,1,0,0      |
+|G               |0,0,1,0      |
+|T               |0,0,0,1      |
+
+Antes de ejecutarla sobre las secuencias del dataset, voy a crear un ejemplo
+sobre el cual realizar la secuencia para explicarla.
+
+```{r}
+ejemplo_secuencias <- c("ACGT","AGGT","CCAG","TTCG","AACG")
+```
+
+Las secuencias están almacenada en un vector llamado "ejemplo_secuencias".
+
+Lo que quiero con la función es la conversión del vector en una matriz, donde
+cada fila representa una seguencia, y cada columna un valor 0 o 1 que, a grupos
+de 4, representa la letra (nucleótido) que representa la secuncia.
+
+En este caso de ejemplo puedo enterarme de que tenemos 5 secuencias, cada una
+formada por 4 nucleótidos. 
+
+Número de secuencias:
+
+```{r}
+(n_seq <- length(ejemplo_secuencias))
+```
+Número de caracteres para cada secuencia:
+
+```{r}
+(len_seq <- nchar(ejemplo_secuencias[1]))
+```
+Como cada nucleótido (letra) se convertirá en un código binario de 4 números (0,1),
+la longitud final de las filas de la matriz será 4 * 4 = 16.
+
+```{r}
+(len_filas_one_hot_matrix <- len_seq*4)
+```
+
+
+Como resultado final, quiero una matriz de 5 filas (secuencias) y 16 columnas
+(valores numéricos que representan los nucleótidos).
+
+Voy a crear una matriz de estas dimensión con solo valores 0 que luego voy
+a llenar con los valores adecuados.
+
+```{r}
+(one_hot_seq <- matrix(0, nrow = n_seq, ncol = len_seq * 4))
+```
+Ahora puedo definir la conversión que quiero realizando una lista con las
+letras y los nucleótidos
+
+```{r}
+codification <- list(
+  "A" = c(1, 0, 0, 0),
+  "C" = c(0, 1, 0, 0),
+  "G" = c(0, 0, 1, 0),
+  "T" = c(0, 0, 0, 1)
+)
+```
+
+Para crear la matriz, voy a realizar un bucle for para la secuencia de 1 hasta
+el Número de secuencias(en este caso 5).
+En este creo el vector "nucleotid" en que guardo una secuencia diferente en cada
+bucle, quitando las comillas para considerar solo las letras que las componen.
+
+En la variable "fila_one_hot" guardo un vector numérico compuesto por 0 con 
+longitud igual a la longitud deseada de cada fila de la matriz (en este caso 16), 
+que luego voy a modificar adecuadamente.
+
+Dentro del primer bucle, realizo otro bucle for considerando la longitud de cada
+nucleotido.
+Como quiero considerar bloque de 4 voy cambiando el indice con el código proporcionado.
+En este modo cuando el indice es 1, consideraré el intervalo 1:4, cuando es 2
+el 5:9 y así en adelante.
+Finalmente voy a realizar la conversión de los valores con los datos
+almacenados en la lista codification.
+
+```{r}
+for (i in 1:n_seq) {
+  nucleotid <- unlist(strsplit(ejemplo_secuencias[i], ""))  
+  
+  fila_one_hot <- numeric(length = len_filas_one_hot_matrix)  
+  
+  for (j in 1:length(nucleotid)) {
+    letra <- nucleotid[j]
+    fila_one_hot[((j - 1) * 4 + 1):(j * 4)] <- codification[[letra]]
+  }
+  
+  one_hot_seq[i, ] <- fila_one_hot
+}
+```
+
+La función ha funcionado y puedo imprimir el resultado.
+
+```{r}
+print(one_hot_seq)
+```
+Ahora puedo aplicarla al dataset proporcionado.
+
+Primero voy a leer los datos y luego aplico la función para realizar la conversión.
+
+```{r}
+label <- read.table("C:/Users/Usuario/Desktop/UOC/tercer semestre/Machine Learning/PEC1/labels.txt")
+sequence <- read.table("C:/Users/Usuario/Desktop/UOC/tercer semestre/Machine Learning/PEC1/sequences.txt")
+```
+
+```{r}
+(n_seq <- length(sequence$V1))
+(len_seq <- nchar(sequence[1]))
+(len_filas_one_hot_matrix <- len_seq*4)
+one_hot_seq <- matrix(0, nrow = n_seq, ncol = len_seq * 4)
+```
+
+
+
+```{r}
+for (i in 1:n_seq) {
+  nucleotid <- unlist((strsplit(sequence$V1[i], "")))  
+  
+  fila_one_hot <- numeric(length = len_filas_one_hot_matrix)  
+  
+  for (j in 1:length(nucleotid)) {
+    letra <- nucleotid[j]
+    fila_one_hot[((j - 1) * 4 + 1):(j * 4)] <- codification[[letra]]
+  }
+  
+  one_hot_seq[i, ] <- fila_one_hot
+}
+
+
+```
+
+Ahora puedo convertir la matriz en un dataframe.
+
+```{r}
+df_one_hot <- as.data.frame(one_hot_seq)
+```
+
+Ahora puedo añadir las etiqueta a las secuencias convertidas y guardar todo en 
+un dataframe.
+
+```{r}
+df_sequence <- data.frame(Etiqueta = label, df_one_hot)
+```
+
+Ahora tengo que separar los datos de forma aleatoria y crear el dataset para el
+train y para el test. Quiero que tengan una proporción establecida.
+En concreto, para este ejercicio, quiero que el train contenga el 67% de los 
+datos y que el test el restante 33%.
+Para realizar esta tarea voy a almacenar los indices, separados de forma aleatoria,
+en una variable. 
+Voy a poner la semilla "123" para que el resultado sea reproducible.
+
+En la variable "n_train" voy a almacenar el número que corresponde al 67% del
+número total de secuencias (200) y en "train_indices" voy a 
+
+```{r}
+set.seed(123)
+proporcion_train <- 0.67
+
+n_train <- round(n_seq * 0.67)
+
+
+train_indices <- sample(1:n_seq, n_train)
+
+
+test_indices <- setdiff(1:n_seq, train_indices)
+```
+
+Voy a extraer el dataframe train y test.
+De la misma forma voy a extraer las etiquetas correspondientes a los indices
+para train y test.
+
+```{r}
+df_train <- df_sequence[train_indices,]
+df_test <- df_sequence[test_indices,]
+train_labels <- df_sequence[train_indices,1]
+test_labels <- df_sequence[test_indices,1]
+```
+
+Ahora puedo aplicar el algoritmo knn con los diferentes valores de k y a comprobar
+la calidad del la previsión con una tabla crossTable.
+
+En general se suele escoger el valor de k igual a la raiz cuadrada del número de
+las muestras.
+En este caso sería
+
+```{r}
+sqrt(n_seq)
+```
+
+
+Aplicar el knn (k = 1,5,11,21,51,71)
+
+Primero intento con k = 1
+
+```{r}
+library(knitr)
+library(class)
+library(gmodels)
+sec_test_pred <- knn(train = df_train, test = df_test,
+ cl = train_labels, k = 1)
+```
+
+Para evaluar qué tan bien ha sido la predicción, puedo realizar una tabla para 
+confrontar los valores predichos  con los valores verdaderos. 
+Para esta tarea, utilizo la función CrossTable del paquete gmodels
+
+```{r}
+library("gmodels")
+tabla_evaluacion_knn <- CrossTable(x = test_labels, y = sec_test_pred,
+ prop.chisq = FALSE)
+```
+
+Ahora puedo implementar una función para realizar una tabla y comprobar la 
+calidad de los análisis realizados con los diferentes valores de k.
+
+```{r}
+ vector_valor_k<-c()
+ vector_falso_positivo<-c()
+ vector_falso_negativo<-c()
+ vector_porcent_error<-c()
+ vector_k <- c(1,5,11,21,51,71)
+ 
+ for(i in vector_k){
+   pred_knn<-knn(train=df_train,test=df_test,cl=train_labels,k=i)
+   tabla_n_k<-CrossTable(x=train_labels,y=test_labels,prop.chisq=FALSE)
+   falso_pos<-tabla_n_k$t["1","0"] 
+   falso_neg<-tabla_n_k$t["0", "1"]
+   verdad_pos<-tabla_n_k$t["1","1"]
+   verdad_neg<-tabla_n_k$t["0","0"]
+   
+   porc_error<-((falso_pos+ falso_neg)/ (falso_pos+ falso_neg +verdad_pos+ verdad_neg)) * 100
+   
+   vector_valor_k<-c(vector_valor_k,i)
+   vector_falso_positivo<-c(vector_falso_positivo,falso_pos)
+   vector_falso_negativo<-c(vector_falso_negativo,falso_neg)
+   vector_porcent_error<-c(vector_porcent_error,porc_error)
+ }
+```
+
+Ahora puedo realizar una curva ROC para cada k y mostrar el valor de AUC.
+
+- k = 1
+
+```{r}
+pred_k1<-knn(train=df_train,test=df_test,cl=train_labels,k=1)
+perf_k1 <- performance(pred_k1, measure = "tpr", x.measure = "fpr")
+plot(perf_k1, main = "curva ROC ", col = "blue", lwd = 3)
+```
+
+```{r}
+perf.auc_k1 <- performance(pred_k1, measure = "auc")
+unlist(perf.auc_k1@y.values)
+```
+
+
+- k = 5
+
+```{r}
+pred_k5<-knn(train=df_train,test=df_test,cl=train_labels,k=5)
+perf_k5 <- performance(pred_k5, measure = "tpr", x.measure = "fpr")
+plot(perf_k5, main = "curva ROC ", col = "blue", lwd = 3)
+abline(a = 0, b = 1, lwd = 2, lty = 2)
+```
+
+```{r}
+perf.auc_k5 <- performance(pred_k5, measure = "auc")
+unlist(perf.auc_k5@y.values)
+```
+
+- k = 11
+
+```{r}
+pred_k11<-knn(train=df_train,test=df_test,cl=train_labels,k=11)
+perf_k11 <- performance(pred_k11, measure = "tpr", x.measure = "fpr")
+plot(perf_k11, main = "curva ROC ", col = "blue", lwd = 3)
+abline(a = 0, b = 1, lwd = 2, lty = 2)
+```
+
+```{r}
+perf.auc_k11 <- performance(pred_k11, measure = "auc")
+unlist(perf.auc_k11@y.values)
+```
+
+- k = 21
+
+```{r}
+pred_k21<-knn(train=df_train,test=df_test,cl=train_labels,k=21)
+perf_k21 <- performance(pred_k21, measure = "tpr", x.measure = "fpr")
+plot(perf_k21, main = "curva ROC ", col = "blue", lwd = 3)
+abline(a = 0, b = 1, lwd = 2, lty = 2)
+```
+
+```{r}
+perf.auc_k21 <- performance(pred_k21, measure = "auc")
+unlist(perf.auc_k21@y.values)
+```
+
+- k = 51
+
+```{r}
+pred_k51<-knn(train=df_train,test=df_test,cl=train_labels,k=51)
+perf_k51 <- performance(pred_k51, measure = "tpr", x.measure = "fpr")
+plot(perf_k51, main = "curva ROC ", col = "blue", lwd = 3)
+abline(a = 0, b = 1, lwd = 2, lty = 2)
+```
+
+```{r}
+perf.auc_k51 <- performance(pred_k51, measure = "auc")
+unlist(perf.auc_k51@y.values)
+```
+
+- k = 71
+
+```{r}
+pred_k71<-knn(train=df_train,test=df_test,cl=train_labels,k=71)
+perf_k71 <- performance(pred_k71, measure = "tpr", x.measure = "fpr")
+plot(perf_k71, main = "curva ROC ", col = "blue", lwd = 3)
+abline(a = 0, b = 1, lwd = 2, lty = 2)
+```
+
+```{r}
+perf.auc_k71 <- performance(pred_k71, measure = "auc")
+unlist(perf.auc_k71@y.values)
+```
+
+
+## Comento sobre bla bla
+
+##  4. Representar las secuencias logo de cada tipo de secuencia (“TFBS”/ “non TFBS”). Comentar los
+ resultados obtenidos.
+ 
+Tengo que representar las secuencias logo de cada tipo de secuencia (“TFBS”/ “non TFBS”).
+Por esto primero voy a seleccionar en dos dataset diferentes las secuencias según
+su etiqueta. En esta fase, trabajaré con las secuencias con las letras, no con
+los código one-hot asociados.
+
+Creo un df con sequencias y etiquetas y luego dos df según la etiqueta.
+
+```{r}
+df_seq <- as.data.frame(sequences,label)
+df_TFBS <- df_seq[df_seq$label == 1]
+df_no_TFBS <- df_seq[df_seq$label == 0]
+```
+
+Para realizar el logo de secuencias puedo utilizar el paquete ggseqlogo.
+
+```{r}
+require(ggseqlogo)
+library(ggplot2)
+sequences_TFBS <- df_TFBS$sequences
+sequences_no_TFBS <- df_no_TFBS$sequences
+ggseqlogo(sequences_TFBS, method = "prob") + 
+  ggtitle("Logo di Secuencia") + 
+  theme_minimal()
+
+```
+
+
+
+```{r}
+ggseqlogo(sequences_no_TFBS, method = "prob") + 
+  ggtitle("Logo di Secuencia") + 
+  theme_minimal()
+```
+
+
+
